@@ -1,9 +1,9 @@
+from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
-
+from core import http
 from core.ai.prompts import (
     MARKET_CONTEXT_SYSTEM,
     MARKET_CONTEXT_USER,
@@ -61,28 +61,26 @@ class ClaudeClient:
 
     async def _request(self, messages: list[dict], system: str) -> str:
         """Make a request to Claude API."""
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
+        try:
+            data = await http.request(
+                "POST",
                 f"{self.BASE_URL}/messages",
                 headers=self._headers,
-                json={
+                json_data={
                     "model": self.MODEL,
                     "max_tokens": self.MAX_TOKENS,
                     "system": system,
                     "messages": messages,
                 },
-                timeout=60.0,
             )
 
-            if response.status_code >= 400:
-                raise ClaudeError(f"Claude API error: {response.text}")
-
-            data = response.json()
             content = data.get("content", [])
             if not content:
                 raise ClaudeError("Empty response from Claude")
 
             return content[0].get("text", "")
+        except Exception as e:
+            raise ClaudeError(f"Claude API error: {str(e)}")
 
     def _parse_json_response(self, text: str) -> dict:
         """Parse JSON from Claude response, handling markdown code blocks."""

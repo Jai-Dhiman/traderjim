@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Position sizing calculations per PRD risk rules."""
 
 from dataclasses import dataclass

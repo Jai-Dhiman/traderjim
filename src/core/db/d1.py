@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -15,6 +16,21 @@ from core.types import (
 )
 
 
+def js_to_python(obj):
+    """Convert JsProxy objects to Python equivalents."""
+    from pyodide.ffi import JsProxy
+    if isinstance(obj, JsProxy):
+        # Check if it's array-like
+        if hasattr(obj, 'to_py'):
+            return obj.to_py()
+        # Check if it's an object with properties
+        try:
+            return {k: js_to_python(getattr(obj, k)) for k in dir(obj) if not k.startswith('_')}
+        except Exception:
+            return str(obj)
+    return obj
+
+
 class D1Client:
     """Client for Cloudflare D1 SQLite database operations."""
 
@@ -24,8 +40,12 @@ class D1Client:
     async def execute(self, query: str, params: list | None = None) -> Any:
         """Execute a query and return results."""
         if params:
-            return await self.db.prepare(query).bind(*params).all()
-        return await self.db.prepare(query).all()
+            result = await self.db.prepare(query).bind(*params).all()
+        else:
+            result = await self.db.prepare(query).all()
+
+        # Convert the results to Python
+        return js_to_python(result)
 
     async def run(self, query: str, params: list | None = None) -> Any:
         """Execute a query without returning results (INSERT, UPDATE, DELETE)."""
@@ -89,16 +109,16 @@ class D1Client:
         result = await self.execute(
             "SELECT * FROM recommendations WHERE id = ?", [rec_id]
         )
-        if not result.results:
+        if not result["results"]:
             return None
-        return self._row_to_recommendation(result.results[0])
+        return self._row_to_recommendation(result["results"][0])
 
     async def get_pending_recommendations(self) -> list[Recommendation]:
         """Get all pending recommendations."""
         result = await self.execute(
             "SELECT * FROM recommendations WHERE status = 'pending' ORDER BY created_at DESC"
         )
-        return [self._row_to_recommendation(row) for row in result.results]
+        return [self._row_to_recommendation(row) for row in result["results"]]
 
     async def update_recommendation_status(
         self, rec_id: str, status: RecommendationStatus
@@ -181,16 +201,16 @@ class D1Client:
     async def get_trade(self, trade_id: str) -> Trade | None:
         """Get a trade by ID."""
         result = await self.execute("SELECT * FROM trades WHERE id = ?", [trade_id])
-        if not result.results:
+        if not result["results"]:
             return None
-        return self._row_to_trade(result.results[0])
+        return self._row_to_trade(result["results"][0])
 
     async def get_open_trades(self) -> list[Trade]:
         """Get all open trades."""
         result = await self.execute(
             "SELECT * FROM trades WHERE status = 'open' ORDER BY opened_at DESC"
         )
-        return [self._row_to_trade(row) for row in result.results]
+        return [self._row_to_trade(row) for row in result["results"]]
 
     async def close_trade(
         self,
@@ -301,7 +321,7 @@ class D1Client:
     async def get_all_positions(self) -> list[Position]:
         """Get all current positions."""
         result = await self.execute("SELECT * FROM positions ORDER BY updated_at DESC")
-        return [self._row_to_position(row) for row in result.results]
+        return [self._row_to_position(row) for row in result["results"]]
 
     def _row_to_position(self, row: dict) -> Position:
         return Position(
@@ -326,8 +346,8 @@ class D1Client:
         result = await self.execute(
             "SELECT * FROM daily_performance WHERE date = ?", [date]
         )
-        if result.results:
-            return self._row_to_daily_performance(result.results[0])
+        if result["results"]:
+            return self._row_to_daily_performance(result["results"][0])
 
         await self.run(
             """
@@ -400,7 +420,7 @@ class D1Client:
     async def get_playbook_rules(self) -> list[PlaybookRule]:
         """Get all playbook rules."""
         result = await self.execute("SELECT * FROM playbook ORDER BY created_at")
-        return [self._row_to_playbook_rule(row) for row in result.results]
+        return [self._row_to_playbook_rule(row) for row in result["results"]]
 
     async def add_playbook_rule(
         self, rule: str, source: str = "learned", supporting_trade_ids: list[str] | None = None
@@ -443,7 +463,7 @@ class D1Client:
             FROM trades
             """
         )
-        row = result.results[0] if result.results else {}
+        row = result["results"][0] if result["results"] else {}
         wins = row.get("wins") or 0
         losses = row.get("losses") or 0
         total_profit = row.get("total_profit") or 0

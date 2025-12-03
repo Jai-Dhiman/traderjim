@@ -10,11 +10,11 @@ enabled = true
 # Times are in UTC (ET = UTC-5 during EST, UTC-4 during EDT)
 [triggers]
 crons = [
-    "35 14 * * 1-5",     # morning_scan: 9:35 AM ET (14:35 UTC during EST)
-    "0 17 * * 1-5",      # midday_check: 12:00 PM ET (17:00 UTC during EST)
-    "30 20 * * 1-5",     # afternoon_scan: 3:30 PM ET (20:30 UTC during EST)
-    "15 21 * * 1-5",     # eod_summary: 4:15 PM ET (21:15 UTC during EST)
-    "*/5 14-21 * * 1-5", # position_monitor: every 5 min during market hours
+    "35 14 * * MON-FRI",     # morning_scan: 9:35 AM ET (14:35 UTC during EST)
+    "0 17 * * MON-FRI",      # midday_check: 12:00 PM ET (17:00 UTC during EST)
+    "30 20 * * MON-FRI",     # afternoon_scan: 3:30 PM ET (20:30 UTC during EST)
+    "15 21 * * MON-FRI",     # eod_summary: 4:15 PM ET (21:15 UTC during EST)
+    "*/5 14-21 * * MON-FRI", # position_monitor: every 5 min during market hours
 ]
 
 # D1 SQLite database for persistent storage

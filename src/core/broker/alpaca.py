@@ -1,8 +1,8 @@
+from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-import httpx
-
+from core import http
 from core.broker.types import (
     Account,
     BrokerPosition,
@@ -57,26 +57,25 @@ class AlpacaClient:
         json_data: dict | None = None,
     ) -> Any:
         """Make an authenticated request to Alpaca."""
-        async with httpx.AsyncClient() as client:
-            response = await client.request(
+        try:
+            return await http.request(
                 method,
                 url,
                 headers=self._headers,
                 params=params,
-                json=json_data,
-                timeout=30.0,
+                json_data=json_data,
             )
-
-            if response.status_code >= 400:
-                raise AlpacaError(
-                    f"Alpaca API error: {response.text}",
-                    status_code=response.status_code,
-                )
-
-            if response.status_code == 204:
-                return None
-
-            return response.json()
+        except Exception as e:
+            error_msg = str(e)
+            status_code = None
+            if error_msg.startswith("HTTP "):
+                parts = error_msg.split(":", 1)
+                if parts[0].startswith("HTTP "):
+                    try:
+                        status_code = int(parts[0].replace("HTTP ", ""))
+                    except ValueError:
+                        pass
+            raise AlpacaError(error_msg, status_code=status_code)
 
     async def _trading_request(
         self,

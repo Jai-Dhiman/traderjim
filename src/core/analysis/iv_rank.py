@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Implied Volatility Rank calculations."""
 
 from dataclasses import dataclass

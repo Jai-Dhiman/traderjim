@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Options screener for finding credit spread opportunities."""
 
 from dataclasses import dataclass

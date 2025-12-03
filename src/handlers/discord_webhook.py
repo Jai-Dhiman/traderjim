@@ -15,11 +15,14 @@ from core.types import RecommendationStatus, SpreadType
 
 async def handle_discord_webhook(request, env):
     """Handle Discord interaction webhooks (button clicks)."""
+    print("Discord webhook received!")
 
     # Parse request
     body = await request.text()
     timestamp = request.headers.get("X-Signature-Timestamp", "")
     signature = request.headers.get("X-Signature-Ed25519", "")
+
+    print(f"Body length: {len(body)}, timestamp: {timestamp}, signature length: {len(signature) if signature else 0}")
 
     # Initialize Discord client for signature verification
     discord = DiscordClient(
@@ -28,8 +31,8 @@ async def handle_discord_webhook(request, env):
         channel_id=env.DISCORD_CHANNEL_ID,
     )
 
-    # Verify signature
-    if not discord.verify_signature(body, timestamp, signature):
+    # Verify signature (async)
+    if not await discord.verify_signature(body, timestamp, signature):
         return Response('{"error": "Invalid signature"}', status=401)
 
     # Parse payload

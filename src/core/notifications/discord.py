@@ -1,15 +1,63 @@
+from __future__ import annotations
 """Discord client for notifications with interactive buttons."""
 
 from typing import Any
 
-import httpx
-
+from core import http
 from core.types import DailyPerformance, Recommendation, Trade
 
 
 class DiscordError(Exception):
     """Discord API error."""
     pass
+
+
+async def verify_ed25519_signature(public_key_hex: str, message: bytes, signature_hex: str) -> bool:
+    """Verify Ed25519 signature using JavaScript SubtleCrypto."""
+    try:
+        from js import crypto, Uint8Array, Object
+        from pyodide.ffi import to_js
+
+        print(f"Verifying signature: pk_len={len(public_key_hex)}, sig_len={len(signature_hex)}, msg_len={len(message)}")
+
+        # Convert hex to bytes
+        public_key_bytes = bytes.fromhex(public_key_hex)
+        signature_bytes = bytes.fromhex(signature_hex)
+
+        print(f"Converted: pk_bytes={len(public_key_bytes)}, sig_bytes={len(signature_bytes)}")
+
+        # Create Uint8Arrays from the bytes
+        pk_array = Uint8Array.new(to_js(list(public_key_bytes)))
+        sig_array = Uint8Array.new(to_js(list(signature_bytes)))
+        msg_array = Uint8Array.new(to_js(list(message)))
+
+        # Import the Ed25519 public key - convert dict to JS object via Object.fromEntries
+        algorithm = Object.fromEntries(to_js([["name", "Ed25519"]]))
+        print(f"Algorithm object: {algorithm}")
+
+        key = await crypto.subtle.importKey(
+            "raw",
+            pk_array,
+            algorithm,
+            False,
+            to_js(["verify"])
+        )
+        print(f"Key imported successfully")
+
+        # Verify the signature
+        result = await crypto.subtle.verify(
+            algorithm,
+            key,
+            sig_array,
+            msg_array
+        )
+        print(f"Verification result: {result}")
+        return bool(result)
+    except Exception as e:
+        import traceback
+        print(f"Ed25519 verification error: {e}")
+        print(traceback.format_exc())
+        return False
 
 
 class DiscordClient:
@@ -29,34 +77,16 @@ class DiscordClient:
 
     async def _request(self, method: str, endpoint: str, data: dict | None = None) -> dict:
         """Make a request to Discord API."""
-        async with httpx.AsyncClient() as client:
-            response = await client.request(
-                method,
-                f"{self.BASE_URL}{endpoint}",
-                headers=self._headers,
-                json=data,
-                timeout=30.0,
-            )
-
-            if response.status_code >= 400:
-                raise DiscordError(f"Discord API error: {response.text}")
-
-            if response.status_code == 204:
-                return {}
-
-            return response.json()
-
-    def verify_signature(self, body: str, timestamp: str, signature: str) -> bool:
-        """Verify Discord interaction signature using Ed25519."""
         try:
-            from nacl.signing import VerifyKey
-            from nacl.exceptions import BadSignature
+            url = f"{self.BASE_URL}{endpoint}"
+            return await http.request(method, url, headers=self._headers, json_data=data)
+        except Exception as e:
+            raise DiscordError(f"Discord API error: {str(e)}")
 
-            verify_key = VerifyKey(bytes.fromhex(self.public_key))
-            verify_key.verify(f"{timestamp}{body}".encode(), bytes.fromhex(signature))
-            return True
-        except (BadSignature, Exception):
-            return False
+    async def verify_signature(self, body: str, timestamp: str, signature: str) -> bool:
+        """Verify Discord interaction signature using Ed25519."""
+        message = f"{timestamp}{body}".encode()
+        return await verify_ed25519_signature(self.public_key, message, signature)
 
     # Message sending
 
@@ -119,16 +149,12 @@ class DiscordClient:
         if components:
             data["data"]["components"] = components
 
-        # Interaction responses use a different endpoint
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.BASE_URL}/interactions/{interaction_id}/{interaction_token}/callback",
-                headers={"Content-Type": "application/json"},
-                json=data,
-                timeout=30.0,
-            )
-            if response.status_code >= 400:
-                raise DiscordError(f"Discord interaction error: {response.text}")
+        # Interaction responses use a different endpoint (no auth needed)
+        url = f"{self.BASE_URL}/interactions/{interaction_id}/{interaction_token}/callback"
+        try:
+            await http.request("POST", url, headers={"Content-Type": "application/json"}, json_data=data)
+        except Exception as e:
+            raise DiscordError(f"Discord interaction error: {str(e)}")
 
     # Trade recommendation
 

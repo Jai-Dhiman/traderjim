@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Circuit breaker logic per PRD risk rules."""
 
 from dataclasses import dataclass
