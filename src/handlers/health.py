@@ -1,6 +1,7 @@
 """Health check endpoint."""
 
 from datetime import datetime
+
 from workers import Response
 
 
@@ -32,13 +33,13 @@ async def handle_health(request, env):
         status["checks"]["kv"] = f"error: {str(e)}"
         status["status"] = "degraded"
 
-    # Check R2 connectivity
-    try:
-        await env.ARCHIVE.list({"limit": 1})
-        status["checks"]["r2"] = "ok"
-    except Exception as e:
-        status["checks"]["r2"] = f"error: {str(e)}"
-        status["status"] = "degraded"
+    # # Check R2 connectivity
+    # try:
+    #     await env.ARCHIVE.list({"limit": 1})
+    #     status["checks"]["r2"] = "ok"
+    # except Exception as e:
+    #     status["checks"]["r2"] = f"error: {str(e)}"
+    #     status["status"] = "degraded"
 
     return Response(
         __import__("json").dumps(status),

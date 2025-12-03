@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """Circuit breaker logic per PRD risk rules."""
 
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ from core.types import CircuitBreakerStatus
 @dataclass
 class CircuitBreakerConfig:
     """Circuit breaker thresholds from PRD."""
+
     # Drawdown limits
     daily_loss_limit_pct: float = 0.02  # 2% daily - halt new trades
     weekly_loss_limit_pct: float = 0.05  # 5% weekly - require manual review
@@ -31,6 +33,7 @@ class CircuitBreakerConfig:
 
 class CircuitBreakerReason:
     """Standard circuit breaker trip reasons."""
+
     DAILY_LOSS = "Daily loss limit exceeded (2%)"
     WEEKLY_LOSS = "Weekly loss limit exceeded (5%)"
     MAX_DRAWDOWN = "Maximum drawdown reached (15%)"

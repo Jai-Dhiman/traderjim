@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 from dataclasses import dataclass
 from typing import Any
@@ -19,12 +20,14 @@ from core.types import Confidence, CreditSpread, PlaybookRule, Trade
 
 class ClaudeError(Exception):
     """Claude API error."""
+
     pass
 
 
 @dataclass
 class TradeAnalysis:
     """Result of AI trade analysis."""
+
     thesis: str
     risks: list[str]
     confidence: Confidence
@@ -34,6 +37,7 @@ class TradeAnalysis:
 @dataclass
 class TradeReflection:
     """Result of AI trade reflection."""
+
     reflection: str
     lesson: str
 
@@ -41,6 +45,7 @@ class TradeReflection:
 @dataclass
 class PlaybookUpdate:
     """Suggested playbook updates."""
+
     new_rules: list[dict]
 
 
@@ -104,6 +109,7 @@ class ClaudeClient:
         """Analyze a potential credit spread trade."""
         # Calculate DTE
         from datetime import datetime
+
         exp_date = datetime.strptime(spread.expiration, "%Y-%m-%d")
         dte = (exp_date - datetime.now()).days
 

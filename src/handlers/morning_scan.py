@@ -17,7 +17,6 @@ from core.risk.circuit_breaker import CircuitBreaker
 from core.risk.position_sizer import PositionSizer
 from core.types import Confidence
 
-
 # Underlyings to scan
 UNDERLYINGS = ["SPY", "QQQ", "IWM"]
 
@@ -88,7 +87,8 @@ async def handle_morning_scan(env):
 
             # Calculate IV metrics (using ATM options as proxy)
             atm_contracts = [
-                c for c in chain.contracts
+                c
+                for c in chain.contracts
                 if abs(c.strike - chain.underlying_price) < chain.underlying_price * 0.02
             ]
 

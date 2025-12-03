@@ -1,18 +1,21 @@
 from __future__ import annotations
+
 """Options screener for finding credit spread opportunities."""
 
 from dataclasses import dataclass
 from datetime import datetime
 
-from core.analysis.greeks import days_to_expiry, years_to_expiry, calculate_greeks
+from core.analysis.greeks import calculate_greeks, days_to_expiry, years_to_expiry
 from core.analysis.iv_rank import IVMetrics, is_elevated_iv
 from core.broker.types import OptionContract, OptionsChain
-from core.types import CreditSpread, Greeks, OptionContract as CoreOptionContract, SpreadType
+from core.types import CreditSpread, Greeks, SpreadType
+from core.types import OptionContract as CoreOptionContract
 
 
 @dataclass
 class ScreenerConfig:
     """Configuration for the options screener."""
+
     # DTE range
     min_dte: int = 30
     max_dte: int = 45
@@ -40,6 +43,7 @@ class ScreenerConfig:
 @dataclass
 class ScoredSpread:
     """A credit spread with a score for ranking."""
+
     spread: CreditSpread
     score: float
     iv_rank: float
@@ -77,21 +81,18 @@ class OptionsScreener:
 
         # Filter expirations to DTE range
         valid_expirations = [
-            exp for exp in chain.expirations
+            exp
+            for exp in chain.expirations
             if self.config.min_dte <= days_to_expiry(exp) <= self.config.max_dte
         ]
 
         for expiration in valid_expirations:
             # Find bull put spreads (bullish/neutral)
-            put_opportunities = self._find_bull_put_spreads(
-                chain, expiration, iv_metrics
-            )
+            put_opportunities = self._find_bull_put_spreads(chain, expiration, iv_metrics)
             opportunities.extend(put_opportunities)
 
             # Find bear call spreads (bearish/neutral)
-            call_opportunities = self._find_bear_call_spreads(
-                chain, expiration, iv_metrics
-            )
+            call_opportunities = self._find_bear_call_spreads(chain, expiration, iv_metrics)
             opportunities.extend(call_opportunities)
 
         # Sort by score descending
@@ -127,7 +128,7 @@ class OptionsScreener:
                 continue
 
             # Find long put candidates (lower strikes)
-            for long_put in puts[i + 1:]:
+            for long_put in puts[i + 1 :]:
                 width = short_put.strike - long_put.strike
                 if not (self.config.min_width <= width <= self.config.max_width):
                     continue
@@ -149,9 +150,7 @@ class OptionsScreener:
                     continue
 
                 # Score the spread
-                scored = self._score_spread(
-                    spread, iv_metrics, abs(short_delta)
-                )
+                scored = self._score_spread(spread, iv_metrics, abs(short_delta))
                 opportunities.append(scored)
 
         return opportunities
@@ -184,7 +183,7 @@ class OptionsScreener:
                 continue
 
             # Find long call candidates (higher strikes)
-            for long_call in calls[i + 1:]:
+            for long_call in calls[i + 1 :]:
                 width = long_call.strike - short_call.strike
                 if not (self.config.min_width <= width <= self.config.max_width):
                     continue
@@ -206,16 +205,12 @@ class OptionsScreener:
                     continue
 
                 # Score the spread
-                scored = self._score_spread(
-                    spread, iv_metrics, abs(short_delta)
-                )
+                scored = self._score_spread(spread, iv_metrics, abs(short_delta))
                 opportunities.append(scored)
 
         return opportunities
 
-    def _filter_for_liquidity(
-        self, contracts: list[OptionContract]
-    ) -> list[OptionContract]:
+    def _filter_for_liquidity(self, contracts: list[OptionContract]) -> list[OptionContract]:
         """Filter contracts for minimum liquidity."""
         filtered = []
         for c in contracts:
@@ -285,7 +280,9 @@ class OptionsScreener:
                 gamma=short_contract.gamma or 0.0,
                 theta=short_contract.theta or 0.0,
                 vega=short_contract.vega or 0.0,
-            ) if short_contract.delta else None,
+            )
+            if short_contract.delta
+            else None,
         )
 
         long_core = CoreOptionContract(
@@ -305,7 +302,9 @@ class OptionsScreener:
                 gamma=long_contract.gamma or 0.0,
                 theta=long_contract.theta or 0.0,
                 vega=long_contract.vega or 0.0,
-            ) if long_contract.delta else None,
+            )
+            if long_contract.delta
+            else None,
         )
 
         return CreditSpread(
@@ -347,12 +346,7 @@ class OptionsScreener:
         ev_score = max(0, expected_value) / (spread.width * 100)  # Normalized by width
 
         # Weighted average
-        score = (
-            iv_score * 0.25
-            + delta_score * 0.25
-            + credit_score * 0.25
-            + ev_score * 0.25
-        )
+        score = iv_score * 0.25 + delta_score * 0.25 + credit_score * 0.25 + ev_score * 0.25
 
         return ScoredSpread(
             spread=spread,

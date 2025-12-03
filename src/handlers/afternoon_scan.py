@@ -17,7 +17,6 @@ from core.risk.circuit_breaker import CircuitBreaker
 from core.risk.position_sizer import PositionSizer
 from core.types import Confidence
 
-
 UNDERLYINGS = ["SPY", "QQQ", "IWM"]
 
 
@@ -85,8 +84,11 @@ async def handle_afternoon_scan(env):
             if not chain.contracts:
                 continue
 
-            atm = [c for c in chain.contracts
-                   if abs(c.strike - chain.underlying_price) < chain.underlying_price * 0.02]
+            atm = [
+                c
+                for c in chain.contracts
+                if abs(c.strike - chain.underlying_price) < chain.underlying_price * 0.02
+            ]
             current_iv = atm[0].implied_volatility if atm and atm[0].implied_volatility else 0.20
             iv_metrics = calculate_iv_metrics(current_iv, [current_iv * 0.8, current_iv * 1.2])
 
@@ -135,8 +137,12 @@ async def handle_afternoon_scan(env):
                         max_loss=spread.max_loss,
                         expires_at=datetime.now() + timedelta(minutes=10),  # Shorter expiry
                         iv_rank=iv_metrics.iv_rank,
-                        delta=spread.short_contract.greeks.delta if spread.short_contract.greeks else None,
-                        theta=spread.short_contract.greeks.theta if spread.short_contract.greeks else None,
+                        delta=spread.short_contract.greeks.delta
+                        if spread.short_contract.greeks
+                        else None,
+                        theta=spread.short_contract.greeks.theta
+                        if spread.short_contract.greeks
+                        else None,
                         thesis=analysis.thesis,
                         confidence=analysis.confidence,
                         suggested_contracts=size_result.contracts,

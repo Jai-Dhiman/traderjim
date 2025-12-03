@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """Pre-trade and pre-execution validators."""
 
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ from core.types import CreditSpread, Recommendation, RecommendationStatus
 @dataclass
 class ValidationResult:
     """Result of a validation check."""
+
     valid: bool
     reason: str | None = None
 

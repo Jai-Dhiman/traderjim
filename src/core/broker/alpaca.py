@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -20,6 +21,7 @@ from core.broker.types import (
 
 class AlpacaError(Exception):
     """Alpaca API error."""
+
     def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message)
         self.status_code = status_code
@@ -213,9 +215,7 @@ class AlpacaClient:
             return (bid + ask) / 2
         return float(quote.get("ap", 0) or quote.get("bp", 0))
 
-    def _parse_option_contract(
-        self, occ_symbol: str, snapshot: dict
-    ) -> OptionContract | None:
+    def _parse_option_contract(self, occ_symbol: str, snapshot: dict) -> OptionContract | None:
         """Parse option contract from Alpaca snapshot."""
         try:
             # Parse OCC symbol: SPY240119C00500000
@@ -226,9 +226,9 @@ class AlpacaClient:
                 underlying += occ_symbol[i]
                 i += 1
 
-            date_part = occ_symbol[i:i+6]
-            option_type = "call" if occ_symbol[i+6] == "C" else "put"
-            strike = int(occ_symbol[i+7:]) / 1000
+            date_part = occ_symbol[i : i + 6]
+            option_type = "call" if occ_symbol[i + 6] == "C" else "put"
+            strike = int(occ_symbol[i + 7 :]) / 1000
 
             expiration = f"20{date_part[:2]}-{date_part[2:4]}-{date_part[4:6]}"
 

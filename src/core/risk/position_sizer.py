@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """Position sizing calculations per PRD risk rules."""
 
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from core.types import CreditSpread, Position
 @dataclass
 class PositionSizeResult:
     """Result of position sizing calculation."""
+
     contracts: int
     risk_amount: float
     risk_percent: float
@@ -18,6 +20,7 @@ class PositionSizeResult:
 @dataclass
 class RiskLimits:
     """Risk limits from PRD."""
+
     # Position sizing
     max_risk_per_trade_pct: float = 0.02  # 2% max per trade
     max_single_position_pct: float = 0.05  # 5% max in one position
@@ -70,9 +73,7 @@ class PositionSizer:
         max_position_value = account_equity * self.limits.max_single_position_pct
 
         # Calculate current portfolio heat
-        current_heat = sum(
-            abs(p.current_value) for p in current_positions
-        )
+        current_heat = sum(abs(p.current_value) for p in current_positions)
         current_heat_pct = current_heat / account_equity if account_equity > 0 else 0
 
         # Available heat capacity
@@ -154,7 +155,9 @@ class PositionSizer:
             "total_risk": total_risk,
             "heat_percent": heat_pct,
             "max_heat_percent": self.limits.max_portfolio_heat_pct,
-            "available_capacity": max(0, (self.limits.max_portfolio_heat_pct - heat_pct) * account_equity),
+            "available_capacity": max(
+                0, (self.limits.max_portfolio_heat_pct - heat_pct) * account_equity
+            ),
             "by_underlying": by_underlying,
             "at_limit": heat_pct >= self.limits.max_portfolio_heat_pct,
         }

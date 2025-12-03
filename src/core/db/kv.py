@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 from datetime import datetime, timedelta
 from typing import Any
@@ -28,18 +29,14 @@ class KVClient:
             return json.loads(value)
         return None
 
-    async def put(
-        self, key: str, value: str, expiration_ttl: int | None = None
-    ) -> None:
+    async def put(self, key: str, value: str, expiration_ttl: int | None = None) -> None:
         """Put a value into KV with optional TTL in seconds."""
         options = {}
         if expiration_ttl:
             options["expirationTtl"] = expiration_ttl
         await self.kv.put(key, value, options)
 
-    async def put_json(
-        self, key: str, value: dict, expiration_ttl: int | None = None
-    ) -> None:
+    async def put_json(self, key: str, value: dict, expiration_ttl: int | None = None) -> None:
         """Put a JSON value into KV."""
         await self.put(key, json.dumps(value), expiration_ttl)
 

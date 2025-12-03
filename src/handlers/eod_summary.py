@@ -92,7 +92,11 @@ async def handle_eod_summary(env):
 
         try:
             # Get original thesis from recommendation
-            rec = await db.get_recommendation(trade.recommendation_id) if trade.recommendation_id else None
+            rec = (
+                await db.get_recommendation(trade.recommendation_id)
+                if trade.recommendation_id
+                else None
+            )
             original_thesis = rec.thesis if rec else None
 
             reflection = await claude.generate_reflection(trade, original_thesis)
@@ -179,8 +183,9 @@ async def handle_eod_summary(env):
     )
 
     # Reset daily KV stats for next day
-    tomorrow = (datetime.now().replace(hour=0, minute=0, second=0) +
-                __import__("datetime").timedelta(days=1))
+    tomorrow = datetime.now().replace(hour=0, minute=0, second=0) + __import__(
+        "datetime"
+    ).timedelta(days=1)
     # Store starting equity for tomorrow
     await kv.put_json(
         f"daily:{tomorrow.strftime('%Y-%m-%d')}",

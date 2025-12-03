@@ -1,11 +1,13 @@
 from __future__ import annotations
+
 """HTTP client wrapper for Cloudflare Workers Python.
 
 Uses the JavaScript fetch API via Pyodide interop.
 """
 
 import json
-from js import fetch, Headers, Object
+
+from js import Headers, Object, fetch
 from pyodide.ffi import to_js
 
 

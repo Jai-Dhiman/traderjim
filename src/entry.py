@@ -4,20 +4,22 @@ Routes incoming requests (HTTP and cron) to appropriate handlers.
 """
 
 from datetime import datetime
+
 from workers import Response
 
-from handlers.health import handle_health
-from handlers.discord_webhook import handle_discord_webhook
-from handlers.morning_scan import handle_morning_scan
-from handlers.midday_check import handle_midday_check
 from handlers.afternoon_scan import handle_afternoon_scan
+from handlers.discord_webhook import handle_discord_webhook
 from handlers.eod_summary import handle_eod_summary
+from handlers.health import handle_health
+from handlers.midday_check import handle_midday_check
+from handlers.morning_scan import handle_morning_scan
 from handlers.position_monitor import handle_position_monitor
 
 
 async def on_fetch(request, env):
     """Handle HTTP requests."""
     import json
+
     url = request.url
     method = request.method
 
@@ -33,6 +35,7 @@ async def on_fetch(request, env):
         # Test endpoints (for development only)
         if "/test/alpaca" in url:
             from core.broker.alpaca import AlpacaClient
+
             alpaca = AlpacaClient(
                 api_key=env.ALPACA_API_KEY,
                 secret_key=env.ALPACA_SECRET_KEY,
@@ -41,15 +44,17 @@ async def on_fetch(request, env):
             account = await alpaca.get_account()
             market_open = await alpaca.is_market_open()
             return Response(
-                json.dumps({
-                    "status": "ok",
-                    "account": {
-                        "equity": account.equity,
-                        "cash": account.cash,
-                        "buying_power": account.buying_power,
-                    },
-                    "market_open": market_open,
-                }),
+                json.dumps(
+                    {
+                        "status": "ok",
+                        "account": {
+                            "equity": account.equity,
+                            "cash": account.cash,
+                            "buying_power": account.buying_power,
+                        },
+                        "market_open": market_open,
+                    }
+                ),
                 headers={"Content-Type": "application/json"},
             )
 
@@ -62,19 +67,23 @@ async def on_fetch(request, env):
 
         if "/test/db" in url:
             from core.db.d1 import D1Client
+
             db = D1Client(env.MAHLER_DB)
             rules = await db.get_playbook_rules()
             return Response(
-                json.dumps({
-                    "status": "ok",
-                    "playbook_rules_count": len(rules),
-                    "sample_rules": [r.rule for r in rules[:3]],
-                }),
+                json.dumps(
+                    {
+                        "status": "ok",
+                        "playbook_rules_count": len(rules),
+                        "sample_rules": [r.rule for r in rules[:3]],
+                    }
+                ),
                 headers={"Content-Type": "application/json"},
             )
 
         if "/test/discord" in url:
             from core.notifications.discord import DiscordClient
+
             discord = DiscordClient(
                 bot_token=env.DISCORD_BOT_TOKEN,
                 public_key=env.DISCORD_PUBLIC_KEY,
@@ -82,22 +91,30 @@ async def on_fetch(request, env):
             )
             message_id = await discord.send_message(
                 content="Mahler test message - if you see this, Discord integration is working!",
-                embeds=[{
-                    "title": "System Test",
-                    "description": "All systems operational",
-                    "color": 0x00ff00,
-                    "fields": [
-                        {"name": "Environment", "value": env.ENVIRONMENT, "inline": True},
-                        {"name": "Timestamp", "value": datetime.now().isoformat(), "inline": True},
-                    ],
-                }],
+                embeds=[
+                    {
+                        "title": "System Test",
+                        "description": "All systems operational",
+                        "color": 0x00FF00,
+                        "fields": [
+                            {"name": "Environment", "value": env.ENVIRONMENT, "inline": True},
+                            {
+                                "name": "Timestamp",
+                                "value": datetime.now().isoformat(),
+                                "inline": True,
+                            },
+                        ],
+                    }
+                ],
             )
             return Response(
-                json.dumps({
-                    "status": "ok",
-                    "message_id": message_id,
-                    "channel_id": env.DISCORD_CHANNEL_ID,
-                }),
+                json.dumps(
+                    {
+                        "status": "ok",
+                        "message_id": message_id,
+                        "channel_id": env.DISCORD_CHANNEL_ID,
+                    }
+                ),
                 headers={"Content-Type": "application/json"},
             )
 
@@ -109,6 +126,7 @@ async def on_fetch(request, env):
 
     except Exception as e:
         import traceback
+
         print(f"Error handling request: {e}")
         print(traceback.format_exc())
         return Response(

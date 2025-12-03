@@ -9,6 +9,7 @@ from typing import Literal
 @dataclass
 class GreeksResult:
     """Calculated Greeks for an option."""
+
     delta: float
     gamma: float
     theta: float
@@ -38,10 +39,9 @@ def calculate_d1_d2(
         return 0.0, 0.0
 
     sqrt_t = math.sqrt(time_to_expiry)
-    d1 = (
-        math.log(spot / strike)
-        + (risk_free_rate + 0.5 * volatility ** 2) * time_to_expiry
-    ) / (volatility * sqrt_t)
+    d1 = (math.log(spot / strike) + (risk_free_rate + 0.5 * volatility**2) * time_to_expiry) / (
+        volatility * sqrt_t
+    )
     d2 = d1 - volatility * sqrt_t
 
     return d1, d2
@@ -97,15 +97,9 @@ def calculate_greeks(
     # Theta (per day, negative for long options)
     theta_common = -(spot * npd1 * volatility) / (2 * sqrt_t)
     if option_type == "call":
-        theta = (
-            theta_common
-            - risk_free_rate * strike * exp_rt * nd2
-        ) / 365  # Per day
+        theta = (theta_common - risk_free_rate * strike * exp_rt * nd2) / 365  # Per day
     else:
-        theta = (
-            theta_common
-            + risk_free_rate * strike * exp_rt * (1 - nd2)
-        ) / 365  # Per day
+        theta = (theta_common + risk_free_rate * strike * exp_rt * (1 - nd2)) / 365  # Per day
 
     # Vega (per 1% change in volatility)
     vega = spot * sqrt_t * npd1 / 100
@@ -140,7 +134,9 @@ def calculate_spread_greeks(
     return GreeksResult(
         delta=(short_greeks.delta - long_greeks.delta) * multiplier * -1,  # Short position
         gamma=(short_greeks.gamma - long_greeks.gamma) * multiplier * -1,
-        theta=(short_greeks.theta - long_greeks.theta) * multiplier * -1,  # Positive for credit spreads
+        theta=(short_greeks.theta - long_greeks.theta)
+        * multiplier
+        * -1,  # Positive for credit spreads
         vega=(short_greeks.vega - long_greeks.vega) * multiplier * -1,
         rho=(short_greeks.rho - long_greeks.rho) * multiplier * -1,
     )

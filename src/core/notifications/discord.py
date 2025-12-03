@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """Discord client for notifications with interactive buttons."""
 
 from typing import Any
@@ -9,16 +10,19 @@ from core.types import DailyPerformance, Recommendation, Trade
 
 class DiscordError(Exception):
     """Discord API error."""
+
     pass
 
 
 async def verify_ed25519_signature(public_key_hex: str, message: bytes, signature_hex: str) -> bool:
     """Verify Ed25519 signature using JavaScript SubtleCrypto."""
     try:
-        from js import crypto, Uint8Array, Object
+        from js import Object, Uint8Array, crypto
         from pyodide.ffi import to_js
 
-        print(f"Verifying signature: pk_len={len(public_key_hex)}, sig_len={len(signature_hex)}, msg_len={len(message)}")
+        print(
+            f"Verifying signature: pk_len={len(public_key_hex)}, sig_len={len(signature_hex)}, msg_len={len(message)}"
+        )
 
         # Convert hex to bytes
         public_key_bytes = bytes.fromhex(public_key_hex)
@@ -35,26 +39,16 @@ async def verify_ed25519_signature(public_key_hex: str, message: bytes, signatur
         algorithm = Object.fromEntries(to_js([["name", "Ed25519"]]))
         print(f"Algorithm object: {algorithm}")
 
-        key = await crypto.subtle.importKey(
-            "raw",
-            pk_array,
-            algorithm,
-            False,
-            to_js(["verify"])
-        )
+        key = await crypto.subtle.importKey("raw", pk_array, algorithm, False, to_js(["verify"]))
         print(f"Key imported successfully")
 
         # Verify the signature
-        result = await crypto.subtle.verify(
-            algorithm,
-            key,
-            sig_array,
-            msg_array
-        )
+        result = await crypto.subtle.verify(algorithm, key, sig_array, msg_array)
         print(f"Verification result: {result}")
         return bool(result)
     except Exception as e:
         import traceback
+
         print(f"Ed25519 verification error: {e}")
         print(traceback.format_exc())
         return False
@@ -141,7 +135,9 @@ class DiscordClient:
     ) -> None:
         """Respond to a Discord interaction (button click)."""
         data = {
-            "type": 7 if update_message else 4,  # 7 = UPDATE_MESSAGE, 4 = CHANNEL_MESSAGE_WITH_SOURCE
+            "type": 7
+            if update_message
+            else 4,  # 7 = UPDATE_MESSAGE, 4 = CHANNEL_MESSAGE_WITH_SOURCE
             "data": {"content": content},
         }
         if embeds:
@@ -152,7 +148,9 @@ class DiscordClient:
         # Interaction responses use a different endpoint (no auth needed)
         url = f"{self.BASE_URL}/interactions/{interaction_id}/{interaction_token}/callback"
         try:
-            await http.request("POST", url, headers={"Content-Type": "application/json"}, json_data=data)
+            await http.request(
+                "POST", url, headers={"Content-Type": "application/json"}, json_data=data
+            )
         except Exception as e:
             raise DiscordError(f"Discord interaction error: {str(e)}")
 
@@ -160,13 +158,15 @@ class DiscordClient:
 
     async def send_recommendation(self, rec: Recommendation) -> str:
         """Send a trade recommendation with approve/reject buttons."""
-        spread_name = "Bull Put Spread" if rec.spread_type.value == "bull_put" else "Bear Call Spread"
+        spread_name = (
+            "Bull Put Spread" if rec.spread_type.value == "bull_put" else "Bear Call Spread"
+        )
         direction = "Bullish" if rec.spread_type.value == "bull_put" else "Bearish"
 
         confidence_color = {
-            "low": 0xFEE75C,     # Yellow
+            "low": 0xFEE75C,  # Yellow
             "medium": 0xF97316,  # Orange
-            "high": 0x57F287,   # Green
+            "high": 0x57F287,  # Green
         }
         color = confidence_color.get(rec.confidence.value if rec.confidence else "low", 0x5865F2)
 
@@ -183,7 +183,11 @@ class DiscordClient:
                 {"name": "Credit", "value": f"${rec.credit:.2f}", "inline": True},
                 {"name": "Max Loss", "value": f"${rec.max_loss:.2f}", "inline": True},
                 {"name": "Contracts", "value": str(rec.suggested_contracts or 1), "inline": True},
-                {"name": "Confidence", "value": (rec.confidence.value.upper() if rec.confidence else "N/A"), "inline": True},
+                {
+                    "name": "Confidence",
+                    "value": (rec.confidence.value.upper() if rec.confidence else "N/A"),
+                    "inline": True,
+                },
             ],
             "footer": {
                 "text": f"Expires: {rec.expires_at.strftime('%H:%M:%S')} | ID: {rec.id[:8]}",
@@ -191,9 +195,13 @@ class DiscordClient:
         }
 
         if rec.iv_rank:
-            embed["fields"].insert(6, {"name": "IV Rank", "value": f"{rec.iv_rank:.1f}%", "inline": True})
+            embed["fields"].insert(
+                6, {"name": "IV Rank", "value": f"{rec.iv_rank:.1f}%", "inline": True}
+            )
         if rec.delta:
-            embed["fields"].insert(7, {"name": "Delta", "value": f"{rec.delta:.3f}", "inline": True})
+            embed["fields"].insert(
+                7, {"name": "Delta", "value": f"{rec.delta:.3f}", "inline": True}
+            )
 
         components = [
             {
@@ -236,7 +244,11 @@ class DiscordClient:
             "fields": [
                 {"name": "Strategy", "value": spread_name, "inline": True},
                 {"name": "Expiration", "value": rec.expiration, "inline": True},
-                {"name": "Strikes", "value": f"${rec.short_strike:.2f}/${rec.long_strike:.2f}", "inline": True},
+                {
+                    "name": "Strikes",
+                    "value": f"${rec.short_strike:.2f}/${rec.long_strike:.2f}",
+                    "inline": True,
+                },
                 {"name": "Credit", "value": f"${rec.credit:.2f}", "inline": True},
                 {"name": "Contracts", "value": str(rec.suggested_contracts or 1), "inline": True},
                 {"name": "Order ID", "value": order_id, "inline": True},
@@ -334,9 +346,21 @@ class DiscordClient:
             "title": f"Daily Summary - {performance.date}",
             "color": pnl_color,
             "fields": [
-                {"name": "Starting Balance", "value": f"${performance.starting_balance:,.2f}", "inline": True},
-                {"name": "Ending Balance", "value": f"${performance.ending_balance:,.2f}", "inline": True},
-                {"name": "Realized P/L", "value": f"${performance.realized_pnl:,.2f}", "inline": True},
+                {
+                    "name": "Starting Balance",
+                    "value": f"${performance.starting_balance:,.2f}",
+                    "inline": True,
+                },
+                {
+                    "name": "Ending Balance",
+                    "value": f"${performance.ending_balance:,.2f}",
+                    "inline": True,
+                },
+                {
+                    "name": "Realized P/L",
+                    "value": f"${performance.realized_pnl:,.2f}",
+                    "inline": True,
+                },
                 {"name": "Open Positions", "value": str(open_positions), "inline": True},
                 {"name": "Trades Opened", "value": str(performance.trades_opened), "inline": True},
                 {"name": "Trades Closed", "value": str(performance.trades_closed), "inline": True},
@@ -377,12 +401,24 @@ class DiscordClient:
             "title": f"Order Filled: {trade.underlying}",
             "color": 0x57F287,  # Green
             "fields": [
-                {"name": "Strategy", "value": trade.spread_type.value.replace("_", " ").title(), "inline": True},
+                {
+                    "name": "Strategy",
+                    "value": trade.spread_type.value.replace("_", " ").title(),
+                    "inline": True,
+                },
                 {"name": "Expiration", "value": trade.expiration, "inline": True},
-                {"name": "Strikes", "value": f"${trade.short_strike:.2f}/${trade.long_strike:.2f}", "inline": True},
+                {
+                    "name": "Strikes",
+                    "value": f"${trade.short_strike:.2f}/${trade.long_strike:.2f}",
+                    "inline": True,
+                },
                 {"name": "Credit", "value": f"${filled_price:.2f}", "inline": True},
                 {"name": "Contracts", "value": str(trade.contracts), "inline": True},
-                {"name": "Total Credit", "value": f"${filled_price * trade.contracts * 100:.2f}", "inline": True},
+                {
+                    "name": "Total Credit",
+                    "value": f"${filled_price * trade.contracts * 100:.2f}",
+                    "inline": True,
+                },
             ],
         }
 

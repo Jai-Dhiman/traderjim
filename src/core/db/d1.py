@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -19,13 +20,14 @@ from core.types import (
 def js_to_python(obj):
     """Convert JsProxy objects to Python equivalents."""
     from pyodide.ffi import JsProxy
+
     if isinstance(obj, JsProxy):
         # Check if it's array-like
-        if hasattr(obj, 'to_py'):
+        if hasattr(obj, "to_py"):
             return obj.to_py()
         # Check if it's an object with properties
         try:
-            return {k: js_to_python(getattr(obj, k)) for k in dir(obj) if not k.startswith('_')}
+            return {k: js_to_python(getattr(obj, k)) for k in dir(obj) if not k.startswith("_")}
         except Exception:
             return str(obj)
     return obj
@@ -106,9 +108,7 @@ class D1Client:
 
     async def get_recommendation(self, rec_id: str) -> Recommendation | None:
         """Get a recommendation by ID."""
-        result = await self.execute(
-            "SELECT * FROM recommendations WHERE id = ?", [rec_id]
-        )
+        result = await self.execute("SELECT * FROM recommendations WHERE id = ?", [rec_id])
         if not result["results"]:
             return None
         return self._row_to_recommendation(result["results"][0])
@@ -120,9 +120,7 @@ class D1Client:
         )
         return [self._row_to_recommendation(row) for row in result["results"]]
 
-    async def update_recommendation_status(
-        self, rec_id: str, status: RecommendationStatus
-    ) -> None:
+    async def update_recommendation_status(self, rec_id: str, status: RecommendationStatus) -> None:
         """Update recommendation status."""
         await self.run(
             "UPDATE recommendations SET status = ? WHERE id = ?",
@@ -277,9 +275,7 @@ class D1Client:
         unrealized_pnl: float,
     ) -> str:
         """Create or update a position snapshot."""
-        existing = await self.execute(
-            "SELECT id FROM positions WHERE trade_id = ?", [trade_id]
-        )
+        existing = await self.execute("SELECT id FROM positions WHERE trade_id = ?", [trade_id])
         if existing.results:
             pos_id = existing.results[0]["id"]
             await self.run(
@@ -343,9 +339,7 @@ class D1Client:
         self, date: str, starting_balance: float
     ) -> DailyPerformance:
         """Get or create daily performance record."""
-        result = await self.execute(
-            "SELECT * FROM daily_performance WHERE date = ?", [date]
-        )
+        result = await self.execute("SELECT * FROM daily_performance WHERE date = ?", [date])
         if result["results"]:
             return self._row_to_daily_performance(result["results"][0])
 

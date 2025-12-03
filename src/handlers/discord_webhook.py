@@ -1,6 +1,7 @@
 """Discord webhook handler for interactive buttons."""
 
 import json
+
 from workers import Response
 
 from core.broker.alpaca import AlpacaClient
@@ -22,7 +23,9 @@ async def handle_discord_webhook(request, env):
     timestamp = request.headers.get("X-Signature-Timestamp", "")
     signature = request.headers.get("X-Signature-Ed25519", "")
 
-    print(f"Body length: {len(body)}, timestamp: {timestamp}, signature length: {len(signature) if signature else 0}")
+    print(
+        f"Body length: {len(body)}, timestamp: {timestamp}, signature length: {len(signature) if signature else 0}"
+    )
 
     # Initialize Discord client for signature verification
     discord = DiscordClient(
@@ -73,37 +76,33 @@ async def handle_discord_webhook(request, env):
     # Handle different actions
     if action == "approve_trade":
         return await handle_approve(
-            env, db, kv, discord, entity_id,
-            interaction_id, interaction_token, message_id
+            env, db, kv, discord, entity_id, interaction_id, interaction_token, message_id
         )
     elif action == "reject_trade":
         return await handle_reject(
-            env, db, discord, entity_id,
-            interaction_id, interaction_token, message_id
+            env, db, discord, entity_id, interaction_id, interaction_token, message_id
         )
     elif action == "close_position":
         return await handle_close_position(
-            env, db, kv, discord, entity_id,
-            interaction_id, interaction_token
+            env, db, kv, discord, entity_id, interaction_id, interaction_token
         )
     elif action == "hold_position":
-        return await handle_hold_position(
-            discord, interaction_id, interaction_token
-        )
+        return await handle_hold_position(discord, interaction_id, interaction_token)
     else:
         return Response(f'{{"error": "Unknown action: {action}"}}', status=400)
 
 
 async def handle_approve(
-    env, db, kv, discord, rec_id,
-    interaction_id, interaction_token, message_id
+    env, db, kv, discord, rec_id, interaction_id, interaction_token, message_id
 ):
     """Handle trade approval."""
     try:
         # Get recommendation
         rec = await db.get_recommendation(rec_id)
         if not rec:
-            await send_error_response(discord, interaction_id, interaction_token, "Recommendation not found")
+            await send_error_response(
+                discord, interaction_id, interaction_token, "Recommendation not found"
+            )
             return Response('{"error": "Recommendation not found"}', status=404)
 
         # Validate recommendation
@@ -117,7 +116,9 @@ async def handle_approve(
         circuit_breaker = CircuitBreaker(kv)
         if not await circuit_breaker.is_trading_allowed():
             status = await circuit_breaker.check_status()
-            await send_error_response(discord, interaction_id, interaction_token, f"Trading halted: {status.reason}")
+            await send_error_response(
+                discord, interaction_id, interaction_token, f"Trading halted: {status.reason}"
+            )
             return Response(json.dumps({"error": "Trading halted"}), status=400)
 
         # Initialize Alpaca
@@ -170,7 +171,11 @@ async def handle_approve(
             "fields": [
                 {"name": "Strategy", "value": spread_name, "inline": True},
                 {"name": "Expiration", "value": rec.expiration, "inline": True},
-                {"name": "Strikes", "value": f"${rec.short_strike:.2f}/${rec.long_strike:.2f}", "inline": True},
+                {
+                    "name": "Strikes",
+                    "value": f"${rec.short_strike:.2f}/${rec.long_strike:.2f}",
+                    "inline": True,
+                },
                 {"name": "Credit", "value": f"${rec.credit:.2f}", "inline": True},
                 {"name": "Contracts", "value": str(rec.suggested_contracts or 1), "inline": True},
                 {"name": "Order ID", "value": order.id, "inline": True},
@@ -198,16 +203,15 @@ async def handle_approve(
         return Response(json.dumps({"error": str(e)}), status=500)
 
 
-async def handle_reject(
-    env, db, discord, rec_id,
-    interaction_id, interaction_token, message_id
-):
+async def handle_reject(env, db, discord, rec_id, interaction_id, interaction_token, message_id):
     """Handle trade rejection."""
     try:
         # Get recommendation
         rec = await db.get_recommendation(rec_id)
         if not rec:
-            await send_error_response(discord, interaction_id, interaction_token, "Recommendation not found")
+            await send_error_response(
+                discord, interaction_id, interaction_token, "Recommendation not found"
+            )
             return Response('{"error": "Recommendation not found"}', status=404)
 
         # Update status
@@ -237,10 +241,7 @@ async def handle_reject(
         return Response(json.dumps({"error": str(e)}), status=500)
 
 
-async def handle_close_position(
-    env, db, kv, discord, trade_id,
-    interaction_id, interaction_token
-):
+async def handle_close_position(env, db, kv, discord, trade_id, interaction_id, interaction_token):
     """Handle position close request."""
     try:
         # Get trade
@@ -261,7 +262,9 @@ async def handle_close_position(
         exp_str = exp_parts[0][2:] + exp_parts[1] + exp_parts[2]
         option_type = "P" if trade.spread_type == SpreadType.BULL_PUT else "C"
 
-        short_symbol = f"{trade.underlying}{exp_str}{option_type}{int(trade.short_strike * 1000):08d}"
+        short_symbol = (
+            f"{trade.underlying}{exp_str}{option_type}{int(trade.short_strike * 1000):08d}"
+        )
         long_symbol = f"{trade.underlying}{exp_str}{option_type}{int(trade.long_strike * 1000):08d}"
 
         # Get current prices

@@ -89,15 +89,15 @@ async def handle_position_monitor(env):
             exp_str = exp_parts[0][2:] + exp_parts[1] + exp_parts[2]
             option_type = "P" if trade.spread_type.value == "bull_put" else "C"
 
-            short_symbol = f"{trade.underlying}{exp_str}{option_type}{int(trade.short_strike * 1000):08d}"
-            long_symbol = f"{trade.underlying}{exp_str}{option_type}{int(trade.long_strike * 1000):08d}"
+            short_symbol = (
+                f"{trade.underlying}{exp_str}{option_type}{int(trade.short_strike * 1000):08d}"
+            )
+            long_symbol = (
+                f"{trade.underlying}{exp_str}{option_type}{int(trade.long_strike * 1000):08d}"
+            )
 
-            short_contract = next(
-                (c for c in chain.contracts if c.symbol == short_symbol), None
-            )
-            long_contract = next(
-                (c for c in chain.contracts if c.symbol == long_symbol), None
-            )
+            short_contract = next((c for c in chain.contracts if c.symbol == short_symbol), None)
+            long_contract = next((c for c in chain.contracts if c.symbol == long_symbol), None)
 
             if not short_contract or not long_contract:
                 print(f"Could not find contracts for trade {trade.id}")

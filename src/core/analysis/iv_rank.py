@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """Implied Volatility Rank calculations."""
 
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from datetime import datetime, timedelta
 @dataclass
 class IVMetrics:
     """IV metrics for an underlying."""
+
     current_iv: float
     iv_rank: float  # Percentile rank over lookback period
     iv_percentile: float  # Percentage of days IV was lower
@@ -118,9 +120,11 @@ def get_iv_regime(iv_rank: float) -> str:
 
 # Historical IV storage helpers
 
+
 @dataclass
 class IVDataPoint:
     """Single IV observation."""
+
     date: str
     iv: float
 
@@ -140,12 +144,8 @@ class IVHistory:
         self._data[symbol].append(IVDataPoint(date=date, iv=iv))
 
         # Trim to lookback period
-        cutoff_date = (
-            datetime.now() - timedelta(days=self.lookback_days)
-        ).strftime("%Y-%m-%d")
-        self._data[symbol] = [
-            dp for dp in self._data[symbol] if dp.date >= cutoff_date
-        ]
+        cutoff_date = (datetime.now() - timedelta(days=self.lookback_days)).strftime("%Y-%m-%d")
+        self._data[symbol] = [dp for dp in self._data[symbol] if dp.date >= cutoff_date]
 
     def get_historical_ivs(self, symbol: str) -> list[float]:
         """Get historical IV values for a symbol."""

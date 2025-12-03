@@ -11,7 +11,9 @@ class R2Client:
     def __init__(self, r2_binding: Any):
         self.r2 = r2_binding
 
-    async def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
+    async def put(
+        self, key: str, data: bytes, content_type: str = "application/octet-stream"
+    ) -> None:
         """Store an object in R2."""
         await self.r2.put(key, data, {"httpMetadata": {"contentType": content_type}})
 
@@ -54,17 +56,18 @@ class R2Client:
         if date is None:
             date = datetime.now().strftime("%Y-%m-%d")
         key = self._options_chain_key(symbol, date)
-        await self.put_json(key, {
-            "symbol": symbol,
-            "date": date,
-            "archived_at": datetime.now().isoformat(),
-            "chain": chain_data,
-        })
+        await self.put_json(
+            key,
+            {
+                "symbol": symbol,
+                "date": date,
+                "archived_at": datetime.now().isoformat(),
+                "chain": chain_data,
+            },
+        )
         return key
 
-    async def get_archived_options_chain(
-        self, symbol: str, date: str
-    ) -> dict | None:
+    async def get_archived_options_chain(self, symbol: str, date: str) -> dict | None:
         """Get archived options chain data."""
         return await self.get_json(self._options_chain_key(symbol, date))
 
@@ -80,13 +83,16 @@ class R2Client:
     ) -> str:
         """Archive end-of-day snapshot."""
         key = self._daily_snapshot_key(date)
-        await self.put_json(key, {
-            "date": date,
-            "archived_at": datetime.now().isoformat(),
-            "positions": positions,
-            "performance": performance,
-            "account": account,
-        })
+        await self.put_json(
+            key,
+            {
+                "date": date,
+                "archived_at": datetime.now().isoformat(),
+                "positions": positions,
+                "performance": performance,
+                "account": account,
+            },
+        )
         return key
 
     async def get_daily_snapshot(self, date: str) -> dict | None:
@@ -100,11 +106,14 @@ class R2Client:
         """Create a backup of data."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         key = self._backup_key(backup_type, timestamp)
-        await self.put_json(key, {
-            "backup_type": backup_type,
-            "created_at": datetime.now().isoformat(),
-            "data": data,
-        })
+        await self.put_json(
+            key,
+            {
+                "backup_type": backup_type,
+                "created_at": datetime.now().isoformat(),
+                "data": data,
+            },
+        )
         return key
 
     async def list_backups(self, backup_type: str) -> list[str]:

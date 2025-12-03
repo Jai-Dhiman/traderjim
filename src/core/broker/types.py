@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -34,6 +35,7 @@ class PositionSide(str, Enum):
 @dataclass
 class OptionQuote:
     """Real-time quote for an option contract."""
+
     symbol: str
     bid: float
     ask: float
@@ -47,6 +49,7 @@ class OptionQuote:
 @dataclass
 class OptionContract:
     """Option contract details from broker."""
+
     symbol: str  # OCC symbol (e.g., SPY240119C00500000)
     underlying: str
     expiration: str  # YYYY-MM-DD
@@ -75,6 +78,7 @@ class OptionContract:
 @dataclass
 class OptionsChain:
     """Full options chain for an underlying."""
+
     underlying: str
     underlying_price: float
     timestamp: datetime
@@ -99,6 +103,7 @@ class OptionsChain:
 @dataclass
 class Order:
     """Order details."""
+
     id: str
     client_order_id: str
     symbol: str
@@ -117,6 +122,7 @@ class Order:
 @dataclass
 class OrderLeg:
     """Leg of a multi-leg order."""
+
     symbol: str
     side: OrderSide
     qty: int
@@ -127,6 +133,7 @@ class OrderLeg:
 @dataclass
 class BrokerPosition:
     """Position held at broker."""
+
     symbol: str
     qty: int
     side: PositionSide
@@ -141,6 +148,7 @@ class BrokerPosition:
 @dataclass
 class Account:
     """Broker account information."""
+
     id: str
     status: str
     currency: str
@@ -158,9 +166,10 @@ class Account:
 @dataclass
 class SpreadOrder:
     """Credit spread order request."""
+
     underlying: str
     short_symbol: str  # OCC symbol for short leg
-    long_symbol: str   # OCC symbol for long leg
+    long_symbol: str  # OCC symbol for long leg
     contracts: int
     limit_price: float  # Net credit per spread
 
