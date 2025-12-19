@@ -457,16 +457,29 @@ class AlpacaClient:
         return [self._parse_order(o) for o in data]
 
     def _parse_order(self, data: dict) -> Order:
+        # Debug: log raw order data for troubleshooting OrderSide issues
+        print(f"DEBUG _parse_order: side={data.get('side')!r}, legs={bool(data.get('legs'))}")
+        if data.get("legs"):
+            for i, leg in enumerate(data["legs"]):
+                print(f"DEBUG _parse_order: leg[{i}] side={leg.get('side')!r}")
+
         legs = None
         if data.get("legs"):
             parsed_legs = []
-            for leg in data["legs"]:
-                # Handle empty leg side - derive from position in spread
+            for i, leg in enumerate(data["legs"]):
+                # Handle empty/missing/invalid leg side
                 leg_side_str = leg.get("side", "")
-                if not leg_side_str:
-                    # For credit spreads, first leg is typically sell, second is buy
-                    # But if we can't determine, default to buy (safer)
-                    leg_side_str = "buy"
+                # Normalize: convert to lowercase string, handle None
+                if leg_side_str is None:
+                    leg_side_str = ""
+                leg_side_str = str(leg_side_str).lower().strip()
+
+                # Validate side value
+                if leg_side_str not in ("buy", "sell"):
+                    # For credit spreads: first leg is sell (short), second is buy (long)
+                    leg_side_str = "sell" if i == 0 else "buy"
+                    print(f"DEBUG: Defaulted leg[{i}] side to {leg_side_str}")
+
                 parsed_legs.append(
                     OrderLeg(
                         symbol=leg["symbol"],
@@ -483,12 +496,19 @@ class AlpacaClient:
         # For multi-leg orders, Alpaca returns empty string for top-level side
         # since each leg has its own side. Derive from first leg if available.
         side_str = data.get("side", "")
-        if not side_str and legs:
-            # Try to get side from first leg, but it may also be empty
-            leg_side = data["legs"][0].get("side", "")
-            side_str = leg_side if leg_side else "buy"
-        elif not side_str:
-            side_str = "buy"  # Default fallback
+        # Normalize: convert to lowercase string, handle None
+        if side_str is None:
+            side_str = ""
+        side_str = str(side_str).lower().strip()
+
+        if side_str not in ("buy", "sell"):
+            if legs:
+                # Use first leg's side (already validated)
+                side_str = legs[0].side.value
+            else:
+                side_str = "buy"  # Default fallback
+            print(f"DEBUG: Defaulted order side to {side_str}")
+
         order_side = OrderSide(side_str)
 
         return Order(

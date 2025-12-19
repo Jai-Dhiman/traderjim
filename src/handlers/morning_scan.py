@@ -19,7 +19,7 @@ from core.db.kv import KVClient
 from core.notifications.discord import DiscordClient
 from core.risk.circuit_breaker import CircuitBreaker, RiskLevel
 from core.risk.position_sizer import PositionSizer
-from core.types import Confidence
+from core.types import Confidence, RecommendationStatus, SpreadType
 
 # Underlyings to scan
 # SPY/QQQ/IWM are equity ETFs (86-92% correlated)
@@ -173,12 +173,22 @@ async def _run_morning_scan(env):
             historical_ivs = await db.get_iv_history(symbol, lookback_days=252)
             iv_history_count = len(historical_ivs)
 
-            # Require minimum 30 days of history for reliable IV rank
-            if iv_history_count < 30:
-                print(f"{symbol}: Only {iv_history_count} days of IV history (need 30+), skipping")
-                continue
-
-            iv_metrics = calculate_iv_metrics(current_iv, historical_ivs)
+            # Use historical data if available, otherwise use fallback for testing
+            if iv_history_count >= 30:
+                iv_metrics = calculate_iv_metrics(current_iv, historical_ivs)
+            else:
+                # Fallback: estimate IV rank from VIX level (temporary for testing)
+                # VIX 20-30 suggests elevated IV, use 70% rank as estimate
+                from core.analysis.iv_rank import IVMetrics
+                estimated_rank = min(90.0, max(50.0, current_vix * 2.5)) if current_vix else 70.0
+                iv_metrics = IVMetrics(
+                    current_iv=current_iv,
+                    iv_rank=estimated_rank,
+                    iv_percentile=estimated_rank,
+                    iv_high=current_iv * 1.2,
+                    iv_low=current_iv * 0.7,
+                )
+                print(f"{symbol}: Using estimated IV rank {estimated_rank:.0f}% (only {iv_history_count} days history)")
             print(f"{symbol}: IV={current_iv:.2%}, Rank={iv_metrics.iv_rank:.1f}%, Percentile={iv_metrics.iv_percentile:.1f}%")
 
             # Screen for opportunities
@@ -269,6 +279,71 @@ async def _run_morning_scan(env):
 
             recommendations_sent += 1
             print(f"Sent recommendation for {spread.underlying}: {rec_id}")
+
+            # Auto-approve if enabled
+            auto_approve = getattr(env, "AUTO_APPROVE_TRADES", "false").lower() == "true"
+            if auto_approve:
+                try:
+                    # Build OCC symbols
+                    exp_parts = spread.expiration.split("-")
+                    exp_str = exp_parts[0][2:] + exp_parts[1] + exp_parts[2]
+                    option_type = "P" if spread.spread_type == SpreadType.BULL_PUT else "C"
+                    short_symbol = f"{spread.underlying}{exp_str}{option_type}{int(spread.short_strike * 1000):08d}"
+                    long_symbol = f"{spread.underlying}{exp_str}{option_type}{int(spread.long_strike * 1000):08d}"
+
+                    # Place order
+                    from core.broker.types import SpreadOrder
+                    spread_order = SpreadOrder(
+                        underlying=spread.underlying,
+                        short_symbol=short_symbol,
+                        long_symbol=long_symbol,
+                        contracts=adjusted_contracts,
+                        limit_price=spread.credit,
+                    )
+                    order = await alpaca.place_spread_order(spread_order)
+
+                    # Update recommendation status
+                    await db.update_recommendation_status(rec_id, RecommendationStatus.APPROVED)
+
+                    # Create trade record
+                    trade_id = await db.create_trade(
+                        recommendation_id=rec_id,
+                        underlying=spread.underlying,
+                        spread_type=spread.spread_type,
+                        short_strike=spread.short_strike,
+                        long_strike=spread.long_strike,
+                        expiration=spread.expiration,
+                        entry_credit=spread.credit,
+                        contracts=adjusted_contracts,
+                        broker_order_id=order.id,
+                    )
+
+                    # Update Discord message to show auto-approved
+                    await discord.update_message(
+                        message_id=message_id,
+                        content=f"**Auto-Approved: {spread.underlying}**",
+                        embeds=[{
+                            "title": f"Trade Auto-Approved: {spread.underlying}",
+                            "color": 0x57F287,
+                            "fields": [
+                                {"name": "Strategy", "value": spread.spread_type.value.replace("_", " ").title(), "inline": True},
+                                {"name": "Expiration", "value": spread.expiration, "inline": True},
+                                {"name": "Strikes", "value": f"${spread.short_strike:.2f}/${spread.long_strike:.2f}", "inline": True},
+                                {"name": "Credit", "value": f"${spread.credit:.2f}", "inline": True},
+                                {"name": "Contracts", "value": str(adjusted_contracts), "inline": True},
+                                {"name": "Order ID", "value": order.id, "inline": True},
+                            ],
+                        }],
+                        components=[],  # Remove buttons
+                    )
+
+                    # Update daily stats
+                    await kv.update_daily_stats(trades_delta=1)
+
+                    print(f"Auto-approved trade: {trade_id}, Order: {order.id}")
+
+                except Exception as e:
+                    print(f"Error auto-approving trade: {e}")
 
         except Exception as e:
             import traceback

@@ -125,6 +125,15 @@ class GraduatedCircuitBreaker:
         """Get current circuit breaker status."""
         return await self.kv.get_circuit_breaker()
 
+    async def is_trading_allowed(self) -> bool:
+        """Check if trading is currently allowed (not halted)."""
+        status = await self.get_status()
+        return not status.halted
+
+    async def check_status(self) -> CircuitBreakerStatus:
+        """Alias for get_status() for backward compatibility."""
+        return await self.get_status()
+
     async def trip(self, reason: str) -> None:
         """Trip the circuit breaker (full halt)."""
         await self.kv.trip_circuit_breaker(reason)

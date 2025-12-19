@@ -276,8 +276,8 @@ class D1Client:
     ) -> str:
         """Create or update a position snapshot."""
         existing = await self.execute("SELECT id FROM positions WHERE trade_id = ?", [trade_id])
-        if existing.results:
-            pos_id = existing.results[0]["id"]
+        if existing["results"]:
+            pos_id = existing["results"][0]["id"]
             await self.run(
                 """
                 UPDATE positions

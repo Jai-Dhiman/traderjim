@@ -39,3 +39,4 @@ bucket_name = "mahler-archive"
 [vars]
 ENVIRONMENT = "paper"
 LOG_LEVEL = "INFO"
+AUTO_APPROVE_TRADES = "true"  # Auto-execute trades without manual Discord approval

@@ -115,7 +115,8 @@ class DiscordClient:
         data = {"content": content}
         if embeds:
             data["embeds"] = embeds
-        if components:
+        # Always include components if provided (even empty list to remove buttons)
+        if components is not None:
             data["components"] = components
 
         await self._request(
@@ -142,7 +143,8 @@ class DiscordClient:
         }
         if embeds:
             data["data"]["embeds"] = embeds
-        if components:
+        # Always include components if provided (even empty list to remove buttons)
+        if components is not None:
             data["data"]["components"] = components
 
         # Interaction responses use a different endpoint (no auth needed)

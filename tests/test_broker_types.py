@@ -259,10 +259,10 @@ class TestAlpacaOrderParsing:
         # This should not raise an error
         order = client._parse_order(response_with_empty_leg_sides)
 
-        # Should handle empty leg sides with fallback to buy
+        # Should handle empty leg sides - for credit spreads: first=sell, second=buy
         assert len(order.legs) == 2
-        assert order.legs[0].side == OrderSide.BUY
-        assert order.legs[1].side == OrderSide.BUY
+        assert order.legs[0].side == OrderSide.SELL  # First leg is short
+        assert order.legs[1].side == OrderSide.BUY   # Second leg is long
 
 
 class TestAlpacaPositionParsing:
