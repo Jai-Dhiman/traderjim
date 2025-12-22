@@ -170,20 +170,27 @@ class D1Client:
         entry_credit: float,
         contracts: int,
         broker_order_id: str | None = None,
+        status: TradeStatus = TradeStatus.OPEN,
     ) -> str:
-        """Create a new trade and return its ID."""
+        """Create a new trade and return its ID.
+
+        Args:
+            status: Initial trade status. Use PENDING_FILL for auto-approved orders
+                    that haven't been confirmed filled yet.
+        """
         trade_id = str(uuid4())
         await self.run(
             """
             INSERT INTO trades (
                 id, recommendation_id, opened_at, status, underlying, spread_type,
                 short_strike, long_strike, expiration, entry_credit, contracts, broker_order_id
-            ) VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 trade_id,
                 recommendation_id,
                 datetime.now().isoformat(),
+                status.value,
                 underlying,
                 spread_type.value,
                 short_strike,
@@ -207,6 +214,27 @@ class D1Client:
         """Get all open trades."""
         result = await self.execute(
             "SELECT * FROM trades WHERE status = 'open' ORDER BY opened_at DESC"
+        )
+        return [self._row_to_trade(row) for row in result["results"]]
+
+    async def update_trade_status(self, trade_id: str, status: TradeStatus) -> None:
+        """Update trade status."""
+        await self.run(
+            "UPDATE trades SET status = ? WHERE id = ?",
+            [status.value, trade_id],
+        )
+
+    async def mark_trade_filled(self, trade_id: str) -> None:
+        """Mark a pending_fill trade as open (filled)."""
+        await self.run(
+            "UPDATE trades SET status = 'open', opened_at = ? WHERE id = ?",
+            [datetime.now().isoformat(), trade_id],
+        )
+
+    async def get_pending_fill_trades(self) -> list[Trade]:
+        """Get all trades awaiting fill confirmation."""
+        result = await self.execute(
+            "SELECT * FROM trades WHERE status = 'pending_fill' ORDER BY opened_at DESC"
         )
         return [self._row_to_trade(row) for row in result["results"]]
 

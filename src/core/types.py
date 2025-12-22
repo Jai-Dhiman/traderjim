@@ -20,8 +20,10 @@ class RecommendationStatus(str, Enum):
 
 
 class TradeStatus(str, Enum):
-    OPEN = "open"
-    CLOSED = "closed"
+    PENDING_FILL = "pending_fill"  # Order placed, awaiting fill
+    OPEN = "open"  # Order filled, position is active
+    CLOSED = "closed"  # Position closed
+    EXPIRED = "expired"  # Order expired without filling
 
 
 class Confidence(str, Enum):

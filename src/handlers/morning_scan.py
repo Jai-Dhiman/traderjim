@@ -19,7 +19,7 @@ from core.db.kv import KVClient
 from core.notifications.discord import DiscordClient
 from core.risk.circuit_breaker import CircuitBreaker, RiskLevel
 from core.risk.position_sizer import PositionSizer
-from core.types import Confidence, RecommendationStatus, SpreadType
+from core.types import Confidence, RecommendationStatus, SpreadType, TradeStatus
 
 # Underlyings to scan
 # SPY/QQQ/IWM are equity ETFs (86-92% correlated)
@@ -305,7 +305,8 @@ async def _run_morning_scan(env):
                     # Update recommendation status
                     await db.update_recommendation_status(rec_id, RecommendationStatus.APPROVED)
 
-                    # Create trade record
+                    # Create trade record with pending_fill status
+                    # The position monitor will verify the order filled and update to 'open'
                     trade_id = await db.create_trade(
                         recommendation_id=rec_id,
                         underlying=spread.underlying,
@@ -316,15 +317,17 @@ async def _run_morning_scan(env):
                         entry_credit=spread.credit,
                         contracts=adjusted_contracts,
                         broker_order_id=order.id,
+                        status=TradeStatus.PENDING_FILL,
                     )
 
-                    # Update Discord message to show auto-approved
+                    # Update Discord message to show order placed (pending fill)
                     await discord.update_message(
                         message_id=message_id,
-                        content=f"**Auto-Approved: {spread.underlying}**",
+                        content=f"**Order Placed: {spread.underlying}** (awaiting fill)",
                         embeds=[{
-                            "title": f"Trade Auto-Approved: {spread.underlying}",
-                            "color": 0x57F287,
+                            "title": f"Trade Order Placed: {spread.underlying}",
+                            "description": "Order submitted - awaiting fill confirmation",
+                            "color": 0xFEE75C,  # Yellow for pending
                             "fields": [
                                 {"name": "Strategy", "value": spread.spread_type.value.replace("_", " ").title(), "inline": True},
                                 {"name": "Expiration", "value": spread.expiration, "inline": True},
@@ -337,10 +340,8 @@ async def _run_morning_scan(env):
                         components=[],  # Remove buttons
                     )
 
-                    # Update daily stats
-                    await kv.update_daily_stats(trades_delta=1)
-
-                    print(f"Auto-approved trade: {trade_id}, Order: {order.id}")
+                    # Don't update daily stats yet - wait for fill confirmation
+                    print(f"Order placed (pending fill): {trade_id}, Order: {order.id}")
 
                 except Exception as e:
                     print(f"Error auto-approving trade: {e}")
